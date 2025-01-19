@@ -23,8 +23,8 @@ Este script automatiza o processo de compilação de ROMs Android, notificando p
 ## **Instalação**
 1. Faça o download manual dos arquivos diretamente a pasta home da sua rom:
    ```bash
-   curl -O https://raw.githubusercontent.com/knyprjkt/build-ci/build.py
-   curl -O https://raw.githubusercontent.com/knyprjkt/build-ci/requirements.txt
+   curl -O https://raw.githubusercontent.com/knyprjkt/build-ci/main/build.py
+   curl -O https://raw.githubusercontent.com/knyprjkt/build-ci/main/requirements.txt
    ```
 2. instale as dependências do python
    ```bash
