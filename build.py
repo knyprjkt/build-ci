@@ -8,22 +8,22 @@ import json
 import logging
 import threading
 
-# Configurações do Telegram
+# Telegram settings
 CHAT_ID = "0000000000"
 BOT_TOKEN = "0000000000:0000000000aLPb6Yn2xCmCLS5EBh_qGBsM"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-# Configurações de build
+# Build settings
 LUNCH_TARGET = "aosp_device-ap4a-user"
 BUILD_TARGET = "bacon"
 
-# Configurações do Pixeldrain
+# Pixeldrain settings
 BASE_URL = "https://pixeldrain.com/api"
 FILE_URL = "https://pixeldrain.com"
 API_KEY = "00000000-00000-0000-0000-0000000000"
 
 
-# Funções para envio de mensagens ao Telegram
+# Functions to send messages to Telegram
 def send_telegram_message(message):
     try:
         url = f"{TELEGRAM_API_URL}/sendMessage"
@@ -31,7 +31,7 @@ def send_telegram_message(message):
         response = requests.post(url, data=data)
         return response.json().get("result", {}).get("message_id")
     except Exception as e:
-        logging.error(f"Erro ao enviar mensagem ao Telegram: {e}")
+        logging.error(f"Error sending message to Telegram: {e}")
 
 def edit_telegram_message(message_id, new_text):
     try:
@@ -44,7 +44,7 @@ def edit_telegram_message(message_id, new_text):
         }
         requests.post(url, data=data)
     except Exception as e:
-        logging.error(f"Erro ao editar mensagem no Telegram: {e}")
+        logging.error(f"Error editing message on Telegram: {e}")
 
 def send_telegram_file(file_path, caption=""):
     try:
@@ -54,9 +54,9 @@ def send_telegram_file(file_path, caption=""):
             files = {"document": file}
             requests.post(url, data=data, files=files)
     except Exception as e:
-        logging.error(f"Erro ao enviar arquivo ao Telegram: {e}")
+        logging.error(f"Error sending file to Telegram: {e}")
 
-# Pegar infromações sobre a ROM e device
+# Get information about the ROM and device
 def get_rom_info():
     process = subprocess.run(
         f"source build/envsetup.sh && lunch {LUNCH_TARGET}",
@@ -70,13 +70,13 @@ def get_rom_info():
     android_version = re.search(r"PLATFORM_VERSION=([\d.]+)", output)
     device = re.search(r"TARGET_PRODUCT=(\w+)", output)
 
-    rom = rom_info.group(1) if rom_info else "Desconhecido"
-    version = android_version.group(1) if android_version else "Desconhecido"
-    device_name = device.group(1).split("_")[1] if device else "Desconhecido"
+    rom = rom_info.group(1) if rom_info else "Unknown"
+    version = android_version.group(1) if android_version else "Unknown"
+    device_name = device.group(1).split("_")[1] if device else "Unknown"
 
     return rom, version, device_name
 
-# Função para iniciar o processo de build
+# Function to start the build process
 def start_build():
     build_command = f"source build/envsetup.sh && lunch {LUNCH_TARGET} && make {BUILD_TARGET} -j$(nproc)"
     log_file = "build.log"
@@ -92,7 +92,7 @@ def start_build():
 
     return build_process, log_file
 
-# Capturar uso de recursos do sistema
+# Capture system resource usage
 def get_system_resources():
     try:
         cpu_usage = psutil.cpu_percent(interval=1)
@@ -104,12 +104,12 @@ def get_system_resources():
             "disk": f"{disk.used // (1024 ** 3)}GB/{disk.total // (1024 ** 3)}GB ({disk.percent}%)"
         }
     except Exception as e:
-        logging.error(f"Erro ao monitorar recursos do sistema: {e}")
+        logging.error(f"Error monitoring system resources: {e}")
         return {"cpu": "N/A", "ram": "N/A", "disk": "N/A"}
 
-# Monitorar progresso do build e enviar para o telegram
+# Monitor build progress and send updates to Telegram
 def monitor_build_progress(log_file, message_id, rom, version, device_name):
-    progress_pattern = re.compile(r"\[\s*(\d+)%\s+(\d+/\d+)\s+([\d\w]+ remaining)\]")  # Captura progresso detalhado
+    progress_pattern = re.compile(r"\[\s*(\d+)%\s+(\d+/\d+)\s+([\d\w]+ remaining)\]")  # Capture detailed progress
     previous_progress = None
     try:
         with open(log_file, "r") as log:
@@ -120,35 +120,35 @@ def monitor_build_progress(log_file, message_id, rom, version, device_name):
                     continue
                 match = progress_pattern.search(line)
                 if match:
-                    percentage = match.group(1) + "%"  # Exemplo: "88%"
-                    tasks = match.group(2)  # Exemplo: "104/118"
-                    time_remaining = match.group(3)  # Exemplo: "5m49s remaining"
+                    percentage = match.group(1) + "%"  # Example: "88%"
+                    tasks = match.group(2)  # Example: "104/118"
+                    time_remaining = match.group(3)  # Example: "5m49s remaining"
                     progress = f"{percentage} {tasks} {time_remaining}"
                     if progress != previous_progress:
-                        # Monitorar recursos do sistema
+                        # Monitor system resources
                         resources = get_system_resources()
                         cpu = resources["cpu"]
                         ram = resources["ram"]
                         disk = resources["disk"]
 
-                        # Atualizar mensagem no Telegram
+                        # Update message on Telegram
                         new_text = (
-                            f"🔄 <b>Compilando...</b>\n"
+                            f"🔄 <b>Compiling...</b>\n"
                             f"<b>ROM:</b> {rom}\n"
                             f"<b>Android:</b> {version}\n"
-                            f"<b>Dispositivo:</b> {device_name}\n"
-                            f"<b>Progresso:</b> {progress}\n"
-                            f"<b>Recursos do Sistema:</b>\n"
+                            f"<b>Device:</b> {device_name}\n"
+                            f"<b>Progress:</b> {progress}\n"
+                            f"<b>System Resources:</b>\n"
                             f"• CPU: {cpu}\n"
                             f"• RAM: {ram}\n"
-                            f"• Disco: {disk}"
+                            f"• Disk: {disk}"
                         )
                         edit_telegram_message(message_id, new_text)
                         previous_progress = progress
                 if "ota_from_target_files.py - INFO    : done" in line:
                     break
     except Exception as e:
-        logging.error(f"Erro ao monitorar progresso: {e}")
+        logging.error(f"Error monitoring progress: {e}")
 
 # Pixeldrain API
 def upload_file_to_pixeldrain(rom_path, API_KEY):
@@ -162,136 +162,136 @@ def upload_file_to_pixeldrain(rom_path, API_KEY):
         )
 
         if result.returncode != 0:
-            logging.error(f"Erro ao fazer upload para o Pixeldrain: {result.stderr}")
+            logging.error(f"Error uploading to Pixeldrain: {result.stderr}")
             return None
 
         response_data = json.loads(result.stdout)
-        logging.info(f"Resposta da API do Pixeldrain: {response_data}")  # Adicionar este print para depuração
+        logging.info(f"Pixeldrain API response: {response_data}")  # Add this print for debugging
         file_id = response_data.get("id")
 
         if file_id:
             return f"https://pixeldrain.com/u/{file_id}"
         else:
-            logging.error("Erro: Não foi possível obter o ID do arquivo do Pixeldrain.")
+            logging.error("Error: Could not get file ID from Pixeldrain.")
             return None
 
     except FileNotFoundError:
-        logging.error(f"Erro: O arquivo '{rom_path}' não foi encontrado.")
+        logging.error(f"Error: File '{rom_path}' not found.")
         return None
     except Exception as e:
-        logging.error(f"Erro ao fazer upload para o Pixeldrain: {e}")
+        logging.error(f"Error uploading to Pixeldrain: {e}")
         return None
 
-# Fazer upload da ROM compilada
+# Upload the compiled ROM
 def upload_build(device_name, rom, log_file):
-    # Obter path do arquivo
+    # Get the file path
     rom_path = None
     with open(log_file, "r") as log:
       line = next((line for line in log if re.search(rf"Package Complete: (out/target/product/{device_name}/[\w\-\.]+\.zip)", line)), None)
       if line:
            rom_path = re.search(rf"Package Complete: (out/target/product/{device_name}/[\w\-\.]+\.zip)", line).group(1)
 
-    # Guardar tamanho do arquivo em MB
+    # Get file size in MB
     file_size_mb = round(os.path.getsize(rom_path) / (1024 ** 2), 2)
 
-    # Informar início do upload
+    # Inform the start of the upload
     upload_message_id = send_telegram_message(
-        f"🟡 <b>Iniciando upload...!</b>\n"
+        f"🟡 <b>Starting upload...!</b>\n"
         f"<b>ROM:</b> {rom}\n"
-        f"<b>Tamanho do arquivo:</b> {file_size_mb} MB\n"
-        f"<b>Dispositivo:</b> {device_name}",
+        f"<b>File size:</b> {file_size_mb} MB\n"
+        f"<b>Device:</b> {device_name}",
     )
 
-    # Verificar se o arquivo ROM existe
+    # Check if the ROM file exists
     if not os.path.exists(rom_path):
-        logging.error(f"Erro: O arquivo ROM '{rom_path}' não foi encontrado.")
+        logging.error(f"Error: ROM file '{rom_path}' not found.")
         edit_telegram_message(
             upload_message_id,
-            f"🔴 <b>Falha no upload: arquivo ROM não encontrado!</b>\n"
+            f"🔴 <b>Upload failed: ROM file not found!</b>\n"
             f"<b>ROM:</b> {rom}\n"
-            f"<b>Tamanho do arquivo:</b> {file_size_mb} MB\n"
-            f"<b>Dispositivo:</b> {device_name}",
+            f"<b>File size:</b> {file_size_mb} MB\n"
+            f"<b>Device:</b> {device_name}",
         )
         return False
 
-    # Fazer upload do arquivo ROM para o Pixeldrain
+    # Upload the ROM file to Pixeldrain
     file_url = upload_file_to_pixeldrain(rom_path, API_KEY)
 
-    # Verificar se o upload foi bem-sucedido
+    # Check if the upload was successful
     if file_url:
         edit_telegram_message(
             upload_message_id,
-            f"🟢 <b>Upload concluído com sucesso!</b>\n"
+            f"🟢 <b>Upload completed successfully!</b>\n"
             f"<b>ROM:</b> {rom}\n"
-            f"<b>Tamanho do arquivo:</b> {file_size_mb} MB\n"
-            f"<b>Dispositivo:</b> {device_name}\n"
+            f"<b>File size:</b> {file_size_mb} MB\n"
+            f"<b>Device:</b> {device_name}\n"
             f"☁️ <a href='{file_url}'>Download</a>",
         )
         return True
     else:
-        logging.error("Erro: Falha ao fazer upload do arquivo.")
+        logging.error("Error: Failed to upload the file.")
         edit_telegram_message(
             upload_message_id,
-            f"🔴 <b>Falha no upload: falha ao fazer upload do arquivo!</b>\n"
+            f"🔴 <b>Upload failed: failed to upload the file!</b>\n"
             f"<b>ROM:</b> {rom}\n"
-            f"<b>Tamanho do arquivo:</b> {file_size_mb} MB\n"
-            f"<b>Dispositivo:</b> {device_name}",
+            f"<b>File size:</b> {file_size_mb} MB\n"
+            f"<b>Device:</b> {device_name}",
         )
         return False
 
-# Função principal
+# Main function
 def main():
-    log_file = None  # Inicialize com None para evitar erros de referência
+    log_file = None  # Initialize with None to avoid reference errors
     try:
-        # Iniciar lunch e obter informações sobre a ROM/device
+        # Start lunch and get information about the ROM/device
         rom, version, device_name = get_rom_info()
 
-        # Enviar mensagem inicial e obter o ID da mensagem
+        # Send initial message and get the message ID
         message_id = send_telegram_message(
-            f"🟡 <b>Iniciando compilação...</b>\n"
+            f"🟡 <b>Starting compilation...</b>\n"
             f"<b>ROM:</b> {rom}\n"
             f"<b>Android:</b> {version}\n"
-            f"<b>Dispositivo:</b> {device_name}\n"
-            f"<b>Progresso:</b> 0%"
+            f"<b>Device:</b> {device_name}\n"
+            f"<b>Progress:</b> 0%"
         )
 
-        # Iniciar o build e monitorar o progresso em paralelo
+        # Start the build and monitor the progress in parallel
         build_process, log_file = start_build()
 
-        # Criar uma thread para monitorar o progresso
+        # Create a thread to monitor the progress
         monitor_thread = threading.Thread(
             target=monitor_build_progress,
             args=(log_file, message_id, rom, version, device_name)
         )
         monitor_thread.start()
 
-        # Aguardar conclusão do build
+        # Wait for the build to complete
         build_process.wait()
 
-        # Verificar resultado do build
+        # Check the build result
         if build_process.returncode == 0:
             edit_telegram_message(
                 message_id,
-                f"🟢 <b>Compilação concluída com sucesso!</b>\n"
+                f"🟢 <b>Compilation completed successfully!</b>\n"
                 f"<b>ROM:</b> {rom}\n"
                 f"<b>Android:</b> {version}\n"
-                f"<b>Dispositivo:</b> {device_name}",
+                f"<b>Device:</b> {device_name}",
             )
-            time.sleep(5)  # Aguardar 5 segundos antes de fazer upload
+            time.sleep(5)  # Wait 5 seconds before uploading
             upload_build(device_name, rom, log_file)
         else:
-            edit_telegram_message(message_id, "🔴 <b>Compilação falhou!</b>")
-            send_telegram_file(log_file, "🔴 <b>Log de erro:</b>")
+            edit_telegram_message(message_id, "🔴 <b>Compilation failed!</b>")
+            send_telegram_file(log_file, "🔴 <b>Error log:</b>")
 
-        # Aguarde o término da thread de monitoramento (opcional)
+        # Wait for the monitoring thread to finish (optional)
         monitor_thread.join()
 
     except Exception as e:
-        send_telegram_message(f"🔴 <b>Erro inesperado:</b> {str(e)}")
+        send_telegram_message(f"🔴 <b>Unexpected error:</b> {str(e)}")
     finally:
-        # Verifique se log_file foi definido e existe antes de usá-lo
+        # Check if log_file is defined and exists before using it
         if log_file and os.path.exists(log_file):
-            send_telegram_file(log_file, "📄 <b>Log final:</b>")
+            send_telegram_file(log_file, "📄 <b>Final log:</b>")
             os.remove(log_file)
 
 if __name__ == "__main__":
