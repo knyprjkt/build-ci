@@ -50,7 +50,7 @@ def send_telegram_file(file_path, caption=""):
     try:
         url = f"{TELEGRAM_API_URL}/sendDocument"
         with open(file_path, "rb") as file:
-            data = {"chat_id": CHAT_ID, "caption": caption}
+            data = {"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"}
             files = {"document": file}
             requests.post(url, data=data, files=files)
     except Exception as e:
